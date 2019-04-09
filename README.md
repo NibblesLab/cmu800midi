@@ -1,7 +1,7 @@
 # USB-MIDI I/F for Roland/Amdek CMU-800 by Arduino (cmu800midi)
-今やビンテージ音源とも評されるAmdek/Roland DGのCMU-800をUSB-MIDI化するプロジェクトです。
+今やビンテージ音源とも評されるAmdek/Roland DGのCMU-800をUSB-MIDI化するプロジェクトです。RJBさん([@RadioJunkBox](https://twitter.com/radiojunkbox))オリジナルのMIDI I/Fをもあさん([@morecat_lab](https://twitter.com/morecat_lab))がUSB-MIDI化したものを、Arduinoに移植しました。
 ## 特徴
-- RJBさん作2011モデルと同等の機能を持ちます。
+- RJBさん作2011モデルとDIN-SYNCを除き同等の機能を持ちます。
 - 本体を改造する必要はありません。
 - CMU-800とI/Fとの電源投入順序を問いません。
 ## 必要な物
@@ -20,6 +20,9 @@ RJBさん作MIDI I/Fと同様に、CMU-800から伸びるケーブルの先の�
 ## ソフト
 基本的にはもあさん作USB-MIDI版の移植です。MsTimer2とMIDIのライブラリを使用しています。CMU-800の制御やチャンネル9のポリフォニック処理はそのままですが、ArduinoやMIDIライブラリの流儀に従った記述に書き換えました。
 
+CMU-800の電源監視は、データバスのD0の向きを一時的に入力にして、その値を読むことで行います。電源が入っていると内部のプルアップ抵抗の効果により'H'が見える(1と読める)はずです。電源が入っていない時はシールドのプルダウン抵抗の効果の方が大きくなり'L'が見える(0と読める)はずです。
+
+なお、ArduinoのUSB-MIDI化にはもあさんのMocoLUFAを使用しています。
 ## 参考
 
 ## ご注意
