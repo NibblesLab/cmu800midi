@@ -10,7 +10,8 @@
 // Version  :  1.0     Jan. 11 2008 
 //             2.2     Aug. 10 2011  (base version by RJB)
 //             0.5     Apr. 23, 2012 : LUFA version
-//             1.0     Apr. XX, 2019 : Arduino version
+//             1.0     Apr.  6, 2019 : Arduino version
+//             1.1     Jun. 22, 2019 :   added TUNE tone generator
 //-----------------------------------------------
 // include
 
@@ -49,6 +50,7 @@
 #define MIDI_CC_Control1    0x10 // MOD SHAPE
 #define MIDI_CC_Control2    0x11 // MOD RATE
 #define MIDI_CC_Control3    0x12 // MOD DEPTH
+#define MIDI_CC_Control4    0x13 // TUNE MODE
 #define MIDI_CC_RPN_LSB     0x64
 #define MIDI_CC_RPN_MSB     0x65
 
@@ -59,8 +61,9 @@
 //-----------------------------------------------
 // グローバル変数
 
-unsigned int  CkPhase;
-bool  Setflg;
+unsigned int CkPhase;
+bool Setflg;
+bool Tuneflg;
 
 char ch = 0;
 
@@ -502,10 +505,33 @@ void NoteOFF(byte Rch, byte note) {
 }
 
 //-----------------------------------------------
+// チューニングトーン発生
+void setTuneTone(void) {
+  unsigned int ch, ctn;
+
+  for(ch = 0; ch<8; ch++) {
+    ctn = ch; 
+    if( ctn > 2)
+      ctn++;
+    OutPort(A8255PC, (ch << 1) + 1);
+    OutPort(A8255PA, 0x6D);
+    OutPort(A8255PC, ch << 1);
+    delayMicroseconds(50); // Wait 50us
+    OutPort(A8255PC, (ch << 1) + 1);
+    if (ctn > 6)
+      continue;
+    OutPort(ctn, 0x46); // LSB
+    OutPort(ctn, 0x0B); // MSB
+  }
+}
+
+//-----------------------------------------------
 // readコールバックハンドラー
 
 // ノートオフ
 void handleNoteOff(byte channel, byte note, byte velocity) {
+  if (Tuneflg) return;
+
   channel--;
   PolyNoteOFF(channel, note);
   NoteOFF(channel, note);
@@ -514,6 +540,8 @@ void handleNoteOff(byte channel, byte note, byte velocity) {
 
 // ノートオン
 void handleNoteOn(byte channel, byte note, byte velocity) {
+  if (Tuneflg) return;
+
   channel--;
   if(velocity == 0){
     PolyNoteOFF(channel, note);
@@ -554,6 +582,16 @@ void handleControlChange(byte channel, byte number, byte value) {
     break;
   case MIDI_CC_Control3:
     DepthBuf[channel] = value >> 5;
+    break;
+  case MIDI_CC_Control4:
+    if((value == 0) && Tuneflg) {
+      AllGateOff();
+      Tuneflg = false;
+      break;
+    }
+    if((value != 0) && !Tuneflg) {
+      Tuneflg = true;
+    }
     break;
   case MIDI_CC_RPN_LSB:
     RPNLSBBuf[channel] = value;
@@ -599,6 +637,7 @@ void handlePitchBend(byte channel, int bend) {
 void handleSystemReset(void) {
   RhythmTrig(RHYTHMOFF);
   AllGateOff();
+  Tuneflg = false;
 }
 
 void setup() {
@@ -646,6 +685,8 @@ void setup() {
   }
   PolyNoteOrderCnt = 1;
 
+  Tuneflg = false;
+
   MIDI.setHandleNoteOff(handleNoteOff);
   MIDI.setHandleNoteOn(handleNoteOn);
   MIDI.setHandleControlChange(handleControlChange);
@@ -666,7 +707,7 @@ void loop() {
   char i;
 
   if (MIDI.read() == false) {
-    if (Setflg) {
+    if (Setflg && !Tuneflg) {
       Setflg = false;
       // CV電圧リチャージ
       SetCV(ch & 0x03);      // 1-4ch
@@ -676,6 +717,10 @@ void loop() {
         SetDCO(i);
       }
     }
+  }
+
+  if (Tuneflg) {
+    setTuneTone();
   }
 }
 
