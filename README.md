@@ -29,7 +29,7 @@ CMU-800の電源監視は、データバスのD0の向きを一時的に入力�
 ## 参考
 - [#052 CMU-800 MIDI interface](http://beatnic.jp/products/cmu-800-midi-interface/) ([beatnic.jp](http://beatnic.jp/))
 - [CMU-800 USB-MIDIインタフェースを作る](http://morecatlab.akiba.coocan.jp/lab/index.php/2012/04/cmu-800-usb-midi/) ([morecat_lab](http://morecatlab.akiba.coocan.jp/lab/))
-- [Midi Firmware for Arduino Uno (Moco)](http://morecatlab.akiba.coocan.jp/lab/index.php/2012/04/cmu-800-usb-midi/) (morecat_lab)
+- [Midi Firmware for Arduino Uno (Moco)](http://morecatlab.akiba.coocan.jp/lab/index.php/aruino/midi-firmware-for-arduino-uno-moco/) (morecat_lab)
 ## ご注意
 - CMU-800が発声可能なチャンネル数を超えるデータや、チャンネル9以外にポリフォニック発音を期待した演奏を送り込んでもエラーにはなりませんが、まともな曲にはなりません。チャンネル数を絞り込みましょう。
 - データが多すぎると演奏がもたつく可能性があります。CPUクロックを20MHzに交換すると改善されるかもしれません。
