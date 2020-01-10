@@ -12,6 +12,8 @@
 //             0.5     Apr. 23, 2012 : LUFA version
 //             1.0     Apr.  6, 2019 : Arduino version
 //             1.1     Jun. 22, 2019 :   added TUNE tone generator
+//             1.2     Jan. 10, 2020 :   correct pitch bend
+//                                   :   modify TUNE mode
 //-----------------------------------------------
 // include
 
@@ -50,7 +52,6 @@
 #define MIDI_CC_Control1    0x10 // MOD SHAPE
 #define MIDI_CC_Control2    0x11 // MOD RATE
 #define MIDI_CC_Control3    0x12 // MOD DEPTH
-#define MIDI_CC_Control4    0x13 // TUNE MODE
 #define MIDI_CC_RPN_LSB     0x64
 #define MIDI_CC_RPN_MSB     0x65
 
@@ -68,7 +69,7 @@ bool Tuneflg;
 char ch = 0;
 
 unsigned char CVBuf[MAX_CH];
-unsigned char PBBuf[MAX_CH];
+         char PBBuf[MAX_CH];
 unsigned char MWBuf[MAX_CH];
 unsigned char RateBuf[MAX_CH];
 unsigned char ShapeBuf[MAX_CH];
@@ -259,8 +260,8 @@ void SetCV(unsigned char ch) {
 // DCO周波数セット
 
 void SetDCO(unsigned char ch) {
-  unsigned char note,ctn,val,ph;
-  char lfo = 0;
+  unsigned char note,ctn,ph;
+  char val, lfo = 0;
   unsigned int m,n,div,bend;
   int mod,detune;
 
@@ -278,7 +279,6 @@ void SetDCO(unsigned char ch) {
   note -= 24;
   m = note / 12;
   n = note % 12;
-  div = DivBase[n] >> m;
 
   // デチューン量による分周比変化量
   detune = (DetuneBuf[ch] - 64) * DetuneBase[n];
@@ -318,11 +318,11 @@ void SetDCO(unsigned char ch) {
   
   // ピッチベンド量を加味した最終分周比
   val = PBBuf[ch];
-  if(val < 64) {
-    bend = (BendBase[n] * (64 - val)) >> 1;
+  if(val < 0) {
+    bend = (BendBase[n] * ( - val)) >> 1;
     div = (DivBase[n] - detune + bend + mod) >> m;
   } else {
-    bend = (BendBase[n+1] * (val - 64)) >> 1;
+    bend = (BendBase[n+1] * val) >> 1;
     div = (DivBase[n] - detune - bend + mod) >> m;
   }
   
@@ -583,16 +583,6 @@ void handleControlChange(byte channel, byte number, byte value) {
   case MIDI_CC_Control3:
     DepthBuf[channel] = value >> 5;
     break;
-  case MIDI_CC_Control4:
-    if((value == 0) && Tuneflg) {
-      AllGateOff();
-      Tuneflg = false;
-      break;
-    }
-    if((value != 0) && !Tuneflg) {
-      Tuneflg = true;
-    }
-    break;
   case MIDI_CC_RPN_LSB:
     RPNLSBBuf[channel] = value;
     break;
@@ -604,7 +594,7 @@ void handleControlChange(byte channel, byte number, byte value) {
     Gate(channel, OFF);
     break;
   case MIDI_MM_ResetAllControl:
-    PBBuf[channel] = 64;
+    PBBuf[channel] = 0;
     MWBuf[channel] = 0;
     RateBuf[channel] = 4;
     ShapeBuf[channel] = 0;
@@ -622,7 +612,7 @@ void handleControlChange(byte channel, byte number, byte value) {
 
 // ピッチベンド
 void handlePitchBend(byte channel, int bend) {
-  bend = bend / 128 - 64;
+  bend /= 128;
   if(channel == 9) {
     PBBuf[2] = bend;
     PBBuf[3] = bend;
@@ -631,6 +621,16 @@ void handlePitchBend(byte channel, int bend) {
   } else {
     PBBuf[channel - 1] = bend;
   }
+}
+
+// チューンリクエスト
+void handleTuneRequest(void) {
+    if(Tuneflg) {
+      AllGateOff();
+      Tuneflg = false;
+    } else {
+      Tuneflg = true;
+    }
 }
 
 // システムリセット
@@ -642,6 +642,7 @@ void handleSystemReset(void) {
 
 void setup() {
   unsigned char i;
+  int cnt = 0;
 
   pinMode(A0, OUTPUT);
   pinMode(A1, OUTPUT);
@@ -668,7 +669,7 @@ void setup() {
   // バッファ変数初期化
   for(i = 0; i < MAX_CH; i++) {
     CVBuf[i] = 0x80;
-    PBBuf[i] = 64;
+    PBBuf[i] = 0;
     MWBuf[i] = 0;
     RateBuf[i] = 4;
     ShapeBuf[i] = 0;
@@ -691,6 +692,7 @@ void setup() {
   MIDI.setHandleNoteOn(handleNoteOn);
   MIDI.setHandleControlChange(handleControlChange);
   MIDI.setHandlePitchBend(handlePitchBend);
+  MIDI.setHandleTuneRequest(handleTuneRequest);
   MIDI.setHandleSystemReset(handleSystemReset);
 
   MIDI.begin(MIDI_CHANNEL_OMNI);
