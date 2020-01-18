@@ -27,7 +27,9 @@ CMU-800の電源監視は、データバスのD0の向きを一時的に入力�
 
 またオリジナルに対する追加機能として、システムメッセージのチューンリクエスト(0xF6)にチューニング用トーンの発生機能を割り当てました。トグル動作となっており、一度受信するとトーンが発生し、もう一度受信すると止まります。トーンを発生させてCMU-800本体のTUNEのキャップの中にあるトリマーをドライバーで回し、440Hzに合わせて下さい。
 
-なお、ArduinoのUSB-MIDI化にはもあさんのMocoLUFAを使用しています。
+さらに、シールドに追加したミニジャックとCMU-800のクロック出力を接続することで、システムメッセージのMIDIクロックを発生する機能も追加しました。CMU-800のTEMPOツマミを操作すると、MIDIクロックの間隔が変化します。クロック出力が不要な時はクロックのケーブルをどちらか片方でも外すと止まります。
+
+なお、ArduinoのUSB-MIDI化にはもあさんのMocoLUFAを使用しています。当然ながら、MocoLUFAを使用しなくてもMIDIシールド等と併用してUSBではないMIDIによる接続も可能です。
 ## 参考
 - [#052 CMU-800 MIDI interface](http://beatnic.jp/products/cmu-800-midi-interface/) ([beatnic.jp](http://beatnic.jp/))
 - [CMU-800 USB-MIDIインタフェースを作る](http://morecatlab.akiba.coocan.jp/lab/index.php/2012/04/cmu-800-usb-midi/) ([morecat_lab](http://morecatlab.akiba.coocan.jp/lab/))
