@@ -46,25 +46,13 @@
 #define MAX_POLY_VOICE  4
 #define OFFSET_CHORD_CH 2
 
-// MIDIメッセージ
-#define MIDI_CC_Moduration    0x01
-#define MIDI_CC_DataEntry   0x06
-#define MIDI_CC_Control1    0x10 // MOD SHAPE
-#define MIDI_CC_Control2    0x11 // MOD RATE
-#define MIDI_CC_Control3    0x12 // MOD DEPTH
-#define MIDI_CC_RPN_LSB     0x64
-#define MIDI_CC_RPN_MSB     0x65
-
-#define MIDI_MM_AllSoundOff   0x78
-#define MIDI_MM_ResetAllControl   0x79
-#define MIDI_MM_AllNoteOff    0x7B
-
 //-----------------------------------------------
 // グローバル変数
 
 unsigned int CkPhase;
 bool Setflg;
 bool Tuneflg;
+bool sync_timing;
 
 char ch = 0;
 
@@ -207,6 +195,13 @@ void intTimer2(void) {
     }
   }
 
+}
+
+//-----------------------------------------------
+// クロック割り込み
+
+void intClock(void) {
+  sync_timing = true;
 }
 
 //-----------------------------------------------
@@ -560,7 +555,7 @@ void handleNoteOn(byte channel, byte note, byte velocity) {
 void handleControlChange(byte channel, byte number, byte value) {
   channel--;
   switch(number) {
-  case MIDI_CC_Moduration:
+  case midi::ModulationWheel:
     if(channel == 8) {
       MWBuf[2] = value >> 2;
       MWBuf[3] = value >> 2;
@@ -570,30 +565,30 @@ void handleControlChange(byte channel, byte number, byte value) {
       MWBuf[channel] = value >> 2;
     }
     break;
-  case MIDI_CC_DataEntry:
+  case midi::DataEntryMSB:
     if((RPNMsbBuf[channel] == 0) && (RPNLSBBuf[channel] == 1))
       DetuneBuf[channel] = value;
     break;
-  case MIDI_CC_Control1:
+  case midi::GeneralPurposeController1:
     ShapeBuf[channel] = value >> 5;
     break;
-  case MIDI_CC_Control2:
+  case midi::GeneralPurposeController2:
     RateBuf[channel] = value >> 4;
     break;
-  case MIDI_CC_Control3:
+  case midi::GeneralPurposeController3:
     DepthBuf[channel] = value >> 5;
     break;
-  case MIDI_CC_RPN_LSB:
+  case midi::RPNLSB:
     RPNLSBBuf[channel] = value;
     break;
-  case MIDI_CC_RPN_MSB:
+  case midi::RPNMSB:
     RPNMsbBuf[channel] = value;
     break;
-  case MIDI_MM_AllSoundOff:
+  case midi::AllSoundOff:
     NoteCnt[channel] = 0;
     Gate(channel, OFF);
     break;
-  case MIDI_MM_ResetAllControl:
+  case midi::ResetAllControllers:
     PBBuf[channel] = 0;
     MWBuf[channel] = 0;
     RateBuf[channel] = 4;
@@ -603,7 +598,7 @@ void handleControlChange(byte channel, byte number, byte value) {
     RPNLSBBuf[channel] = 127;
     DetuneBuf[channel] = 64;
     break;
-  case MIDI_MM_AllNoteOff:
+  case midi::AllNotesOff:
     NoteCnt[channel] = 0;
     Gate(channel, OFF);
     break;
@@ -687,6 +682,7 @@ void setup() {
   PolyNoteOrderCnt = 1;
 
   Tuneflg = false;
+  sync_timing = false;
 
   MIDI.setHandleNoteOff(handleNoteOff);
   MIDI.setHandleNoteOn(handleNoteOn);
@@ -700,6 +696,8 @@ void setup() {
 
   MsTimer2::set(1, intTimer2);
   MsTimer2::start();
+
+  attachInterrupt(0, intClock, RISING);
 }
 
 //-----------------------------------------------
@@ -723,6 +721,11 @@ void loop() {
 
   if (Tuneflg) {
     setTuneTone();
+  }
+
+  if( sync_timing ) {
+    MIDI.sendRealTime(midi::Clock);
+    sync_timing = false;
   }
 }
 
