@@ -14,6 +14,8 @@
 //             1.1     Jun. 22, 2019 :   added TUNE tone generator
 //             1.2     Jan. 10, 2020 :   correct pitch bend
 //                                   :   modify TUNE mode
+//             1.3     Jan. 18, 2020 :   added MIDI clock output
+//             1.4     Dec. 18, 2021 :   reduce noise
 //-----------------------------------------------
 // include
 
@@ -710,11 +712,17 @@ void loop() {
     if (Setflg && !Tuneflg) {
       Setflg = false;
       // CV電圧リチャージ
-      SetCV(ch & 0x03);      // 1-4ch
-      SetCV((ch & 0x03) + 0x04); // 5-8ch
-      ch++;
+      if ((CVBuf[ch]&0x80) == 0) {
+        SetCV(ch);      // 1-4ch
+      }
+      if ((CVBuf[ch + 0x04]&0x80) == 0) {
+        SetCV(ch + 0x04); // 5-8ch
+      }
+      ch = (ch + 1) & 0x03;
       for(i = 0; i < 6; i++) {
-        SetDCO(i);
+        if ((CVBuf[i]&0x80) == 0) {
+          SetDCO(i);
+        }
       }
     }
   }
